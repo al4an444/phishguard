@@ -4,114 +4,228 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PhishGuard</title>
-<style>
-  :root {
-    --bg: #f6f7f9; --panel: #ffffff; --text: #1b1f24; --muted: #5b6470; --border: #d9dde3;
-    --accent: #2457d6; --low: #1f7a4a; --sus: #a66300; --bad: #c22b2b;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #111418; --panel: #1a1f25; --text: #e6e9ed; --muted: #9aa3ad; --border: #2c333b;
-      --accent: #6d95ff; --low: #4cc38a; --sus: #f0a93b; --bad: #ff6b6b;
-    }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 760px; margin: 0 auto; padding: 40px 16px; }
-  h1 { margin: 0 0 4px; font-size: 28px; }
-  p.lead { margin: 0 0 24px; color: var(--muted); }
-  form { display: flex; gap: 8px; }
-  input { flex: 1; min-width: 0; padding: 12px; font: inherit; color: inherit;
-          background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
-  button { padding: 12px 20px; font: inherit; font-weight: 600; color: #fff;
-           background: var(--accent); border: 0; border-radius: 8px; cursor: pointer; }
-  #result { margin-top: 24px; }
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-  .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-  .verdict { font-size: 22px; font-weight: 700; }
-  .score { font-variant-numeric: tabular-nums; color: var(--muted); }
-  .bar { height: 8px; background: var(--border); border-radius: 4px; margin: 12px 0 16px; overflow: hidden; }
-  .bar > div { height: 100%; }
-  .low_risk { color: var(--low); } .suspicious { color: var(--sus); } .phishing { color: var(--bad); }
-  .fill-low_risk { background: var(--low); } .fill-suspicious { background: var(--sus); } .fill-phishing { background: var(--bad); }
-  .domain { color: var(--muted); word-break: break-all; margin-bottom: 12px; }
-  ul { list-style: none; padding: 0; margin: 0; }
-  li { padding: 10px 0; border-top: 1px solid var(--border); display: flex; gap: 12px; }
-  .w { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 36px; }
-  .ev { color: var(--muted); font-size: 14px; word-break: break-all; }
-  .error { color: var(--bad); }
-  footer { margin-top: 32px; color: var(--muted); font-size: 14px; }
-</style>
+<meta name="description" content="Analiza URLs y correos sospechosos sin abrirlos. Cada punto del score indica la regla que lo produjo.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23d6292b'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/tokens.css">
+<link rel="stylesheet" href="/static/styles.css">
+<script src="/static/app.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#analizar">Saltar al analizador</a>
+
+<header class="top">
+  <a class="wordmark" href="#analizar">PhishGuard</a>
+  <nav aria-label="Secciones">
+    <ul>
+      <li><a href="#funcionamiento">Funcionamiento</a></li>
+      <li><a href="#reglas">Reglas</a></li>
+      <li><a href="#modelo">Modelo</a></li>
+      <li><a href="#api">API</a></li>
+      <li><a href="#preguntas">Preguntas</a></li>
+    </ul>
+  </nav>
+</header>
+
 <main>
-  <h1>PhishGuard</h1>
-  <p class="lead">Analiza una URL sospechosa. El análisis es local: la URL nunca se visita.</p>
-  <form id="form">
-    <input id="url" type="text" placeholder="https://ejemplo.com/login" autocomplete="off" required maxlength="4096">
-    <button type="submit">Analizar</button>
-  </form>
-  <div id="result"></div>
-  <footer>API documentada en <a href="/docs">/docs</a></footer>
+  <section class="intro" id="analizar" aria-labelledby="title">
+    <h1 id="title">¿Este enlace es una trampa?</h1>
+    <p class="intro-sub">Analiza URLs y correos sin abrirlos. Cada punto del score indica la regla que lo produjo y la evidencia encontrada.</p>
+
+    <div class="modes" role="tablist" aria-label="Tipo de análisis">
+      <button role="tab" id="tab-url" aria-controls="panel-url" aria-selected="true">URL</button>
+      <button role="tab" id="tab-batch" aria-controls="panel-batch" aria-selected="false" tabindex="-1">Varias URLs</button>
+      <button role="tab" id="tab-email" aria-controls="panel-email" aria-selected="false" tabindex="-1">Correo .eml</button>
+    </div>
+
+    <form role="tabpanel" id="panel-url" aria-labelledby="tab-url" class="panel" novalidate>
+      <label class="sr-only" for="url-input">URL a analizar</label>
+      <div class="bigfield">
+        <input id="url-input" name="url" type="text" inputmode="url" autocomplete="off" spellcheck="false"
+               maxlength="4096" placeholder="Pega la URL aquí" required>
+        <button class="go" type="submit" aria-label="Analizar URL"><span aria-hidden="true">→</span></button>
+      </div>
+      <p class="examples">
+        <span>Ejemplos:</span>
+        <button type="button" data-example="http://paypa1-login.xyz/verify/account">paypa1-login.xyz</button>
+        <button type="button" data-example="https://xn--pypal-4ve.com/signin">pаypal.com (cirílico)</button>
+        <button type="button" data-example="http://www.paypal.com@192.168.4.20/webscr">paypal.com@192.168.4.20</button>
+        <button type="button" data-example="https://www.mercadolibre.com.mx/">mercadolibre.com.mx</button>
+      </p>
+    </form>
+
+    <form role="tabpanel" id="panel-batch" aria-labelledby="tab-batch" class="panel" hidden novalidate>
+      <label for="batch-input" class="field-label">Una URL por línea, hasta 100</label>
+      <textarea id="batch-input" rows="8" spellcheck="false" placeholder="https://ejemplo.com&#10;http://paypa1-login.xyz/verify&#10;bit.ly/abc123"></textarea>
+      <div class="panel-foot">
+        <span id="batch-count" class="muted">0 URLs</span>
+        <button class="btn" type="submit">Analizar lote</button>
+      </div>
+    </form>
+
+    <form role="tabpanel" id="panel-email" aria-labelledby="tab-email" class="panel" hidden novalidate>
+      <label class="drop" for="email-file" id="email-drop">
+        <input id="email-file" type="file" accept=".eml,message/rfc822">
+        <span class="drop-title">Archivo .eml</span>
+        <span class="drop-sub" id="email-file-name">Arrástralo aquí o haz clic para elegirlo. Máximo 5 MB.</span>
+      </label>
+      <details class="paste">
+        <summary>Pegar el código fuente del correo</summary>
+        <textarea id="email-raw" rows="7" spellcheck="false" aria-label="Código fuente del correo" placeholder="Return-Path: …&#10;Authentication-Results: …&#10;From: …"></textarea>
+      </details>
+      <p class="muted small">Gmail: menú ⋮ → Mostrar original. Outlook: … → Ver → Ver origen del mensaje.</p>
+      <div class="panel-foot">
+        <button type="button" class="link" id="email-sample">Cargar correo de ejemplo</button>
+        <button class="btn" type="submit">Analizar correo</button>
+      </div>
+    </form>
+
+    <div id="output" class="output" aria-live="polite" aria-busy="false"></div>
+  </section>
+
+  <section class="block" id="funcionamiento" aria-labelledby="how-title">
+    <h2 id="how-title">Funcionamiento</h2>
+    <p class="block-sub">Recorrido de <code>http://paypa1-login.xyz/verify/account</code>, calculado por este servidor al cargar la página. La URL no se visita en ningún paso.</p>
+    <ol class="steps">
+      <li>
+        <h3>Normalización</h3>
+        <p>Separa subdominio, dominio registrable y sufijo con la Public Suffix List. Decodifica punycode y detecta IPs escritas como un solo número.</p>
+        <pre data-trace="parse">…</pre>
+      </li>
+      <li>
+        <h3>Reglas</h3>
+        <p>24 reglas independientes. Cada una suma puntos y guarda la evidencia que la activó.</p>
+        <pre data-trace="rules">…</pre>
+      </li>
+      <li>
+        <h3>Modelo</h3>
+        <p>Una regresión logística puntúa el nombre del dominio. Suma +10 desde 80 % de probabilidad y +20 desde 90 %.</p>
+        <pre data-trace="ml">…</pre>
+      </li>
+      <li>
+        <h3>Dictamen</h3>
+        <p>Suma los pesos con un máximo de 100. Desde 30 es sospechoso; desde 60, phishing.</p>
+        <pre data-trace="verdict">…</pre>
+      </li>
+    </ol>
+  </section>
+
+  <section class="block" id="reglas" aria-labelledby="rules-title">
+    <h2 id="rules-title">Reglas</h2>
+    <p class="block-sub">Una selección. Todos los ejemplos activan la regla indicada en el motor actual.</p>
+    <div class="rules" role="table" aria-label="Reglas de detección">
+      <div class="rules-row rules-head" role="row">
+        <span role="columnheader">Técnica</span><span role="columnheader">Ejemplo</span><span role="columnheader">Regla</span><span role="columnheader" class="num">Peso</span>
+      </div>
+      <div class="rules-row" role="row"><span role="cell">Homoglifos</span><code role="cell">paypa1.com · rnicrosoft.com</code><code role="cell">homoglyph</code><span role="cell" class="num">+40</span></div>
+      <div class="rules-row" role="row"><span role="cell">Error tipográfico</span><code role="cell">netfliix.com</code><code role="cell">typosquatting</code><span role="cell" class="num">+35</span></div>
+      <div class="rules-row" role="row"><span role="cell">Alfabetos mezclados</span><code role="cell">xn--pypal-4ve.com (pаypal)</code><code role="cell">mixed_scripts</code><span role="cell" class="num">+30</span></div>
+      <div class="rules-row" role="row"><span role="cell">Marca combinada</span><code role="cell">paypal-secure-login.com</code><code role="cell">combosquatting</code><span role="cell" class="num">+30</span></div>
+      <div class="rules-row" role="row"><span role="cell">Marca en el subdominio</span><code role="cell">paypal.com.account-check.example</code><code role="cell">brand_in_subdomain</code><span role="cell" class="num">+25</span></div>
+      <div class="rules-row" role="row"><span role="cell">Usuario antes de «@»</span><code role="cell">paypal.com@evil.example</code><code role="cell">userinfo</code><span role="cell" class="num">+25</span></div>
+      <div class="rules-row" role="row"><span role="cell">IP como host</span><code role="cell">http://3232235777/login</code><code role="cell">ip_host</code><span role="cell" class="num">+25</span></div>
+      <div class="rules-row" role="row"><span role="cell">Descarga ejecutable</span><code role="cell">example.com/factura.exe</code><code role="cell">risky_download</code><span role="cell" class="num">+25</span></div>
+      <div class="rules-row" role="row"><span role="cell">Correo: doble extensión</span><code role="cell">estado_de_cuenta.pdf.exe</code><code role="cell">double_extension</code><span role="cell" class="num">+35</span></div>
+      <div class="rules-row" role="row"><span role="cell">Correo: remitente suplantado</span><code role="cell">"BBVA" &lt;alertas@bbva-mx-seguridad.com&gt;</code><code role="cell">display_name_spoof</code><span role="cell" class="num">+30</span></div>
+      <div class="rules-row" role="row"><span role="cell">Correo: enlace engañoso</span><code role="cell">muestra bbva.mx, lleva a otro dominio</code><code role="cell">deceptive_link</code><span role="cell" class="num">+30</span></div>
+      <div class="rules-row" role="row"><span role="cell">Correo: DMARC fallido</span><code role="cell">dmarc=fail</code><code role="cell">dmarc_fail</code><span role="cell" class="num">+25</span></div>
+    </div>
+    <p class="note">Incluye bancos y servicios de Latinoamérica (BBVA, Santander, Banorte, Banamex, Mercado Libre, Mercado Pago) y palabras clave en español como «verificar», «cuenta» o «actualizar».</p>
+  </section>
+
+  <section class="block" id="modelo" aria-labelledby="model-title">
+    <h2 id="model-title">Modelo</h2>
+    <dl class="figures">
+      <div><dt>ROC AUC en test</dt><dd data-model="auc">—</dd></div>
+      <div><dt>Dominios de entrenamiento y test</dt><dd data-model="samples">—</dd></div>
+      <div><dt>Entrenado el</dt><dd data-model="date">—</dd></div>
+    </dl>
+    <div class="split">
+      <div class="prose">
+        <p>Dominios legítimos de la lista Tranco y dominios de phishing de Phishing.Database y OpenPhish. Los dominios de phishing que aparecen en Tranco se descartan: son sitios legítimos comprometidos, no dominios del atacante.</p>
+        <p>El modelo solo ve el nombre del dominio, así que su precisión tiene un límite. Por eso actúa como refuerzo: por sí solo nunca lleva una URL a «sospechoso».</p>
+        <p>Se distribuye como JSON en lugar de pickle, de modo que cargarlo no puede ejecutar código.</p>
+      </div>
+      <table class="table">
+        <caption>Conjunto de test: dominios que el modelo no vio al entrenar</caption>
+        <thead><tr><th scope="col">Umbral</th><th scope="col" class="num">Precisión</th><th scope="col" class="num">Recall</th><th scope="col" class="num">Falsos positivos</th></tr></thead>
+        <tbody id="model-rows"><tr><td colspan="4" class="muted">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="block" id="api" aria-labelledby="api-title">
+    <h2 id="api-title">API</h2>
+    <div class="split">
+      <div>
+        <table class="table">
+          <caption>Endpoints · documentación interactiva en <a href="/docs">/docs</a></caption>
+          <tbody>
+            <tr><td><code>POST /analyze</code></td><td class="muted">Una URL</td></tr>
+            <tr><td><code>POST /analyze/batch</code></td><td class="muted">Hasta 100 URLs</td></tr>
+            <tr><td><code>POST /analyze/email</code></td><td class="muted">Correo como texto</td></tr>
+            <tr><td><code>POST /analyze/email/upload</code></td><td class="muted">Archivo .eml</td></tr>
+            <tr><td><code>GET /model</code></td><td class="muted">Métricas del modelo</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="code">
+        <div class="code-tabs" role="tablist" aria-label="Ejemplo de código">
+          <button role="tab" id="code-tab-curl" aria-controls="code-curl" aria-selected="true">curl</button>
+          <button role="tab" id="code-tab-py" aria-controls="code-py" aria-selected="false" tabindex="-1">Python</button>
+          <button role="tab" id="code-tab-cli" aria-controls="code-cli" aria-selected="false" tabindex="-1">CLI</button>
+          <button type="button" class="copy" data-copy-active>Copiar</button>
+        </div>
+        <pre role="tabpanel" id="code-curl" aria-labelledby="code-tab-curl" tabindex="0"><code>curl -X POST http://localhost:8000/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://rnicrosoft.com/login"}'</code></pre>
+        <pre role="tabpanel" id="code-py" aria-labelledby="code-tab-py" tabindex="0" hidden><code>from phishguard import analyze_url
+
+report = analyze_url("https://rnicrosoft.com/login")
+print(report.verdict, report.score)
+for finding in report.findings:
+    print(finding.weight, finding.rule, finding.evidence)</code></pre>
+        <pre role="tabpanel" id="code-cli" aria-labelledby="code-tab-cli" tabindex="0" hidden><code>phishguard https://rnicrosoft.com/login
+phishguard --email correo.eml
+phishguard -f urls.txt --fail-on suspicious</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="preguntas" aria-labelledby="faq-title">
+    <h2 id="faq-title">Preguntas</h2>
+    <div class="faq">
+      <details>
+        <summary>¿Se visita la URL que pego?</summary>
+        <p>No. Solo se analiza el texto de la URL: su estructura, el dominio y los caracteres que usa. No se descarga la página ni se ejecuta nada.</p>
+      </details>
+      <details>
+        <summary>¿Se guardan los datos que analizo?</summary>
+        <p>No. No hay base de datos ni registro de consultas, y el servidor corre en tu equipo. Esta página no carga fuentes, scripts ni analítica de terceros.</p>
+      </details>
+      <details>
+        <summary>El resultado es «riesgo bajo». ¿Es seguro?</summary>
+        <p>No necesariamente. Significa que la URL no tiene señales fuertes. Un phishing alojado en un dominio limpio o en una web legítima comprometida puede pasar desapercibido.</p>
+      </details>
+      <details>
+        <summary>¿Por qué un sitio legítimo salió sospechoso?</summary>
+        <p>Las heurísticas tienen falsos positivos, por ejemplo un dominio real con varios guiones y palabras como «login». El informe muestra qué regla se activó para que puedas valorarlo. Los errores se reportan con la plantilla de falso positivo del repositorio.</p>
+      </details>
+      <details>
+        <summary>¿Cómo se verifica el remitente de un correo?</summary>
+        <p>Se leen los resultados de SPF, DKIM y DMARC que tu servidor de correo dejó en la cabecera <code>Authentication-Results</code>; las firmas no se vuelven a verificar. Por eso hace falta el código fuente completo del correo.</p>
+      </details>
+      <details>
+        <summary>¿Sustituye al antivirus o al filtro de correo?</summary>
+        <p>No. Sirve como segunda opinión cuando algo pasó el filtro, o como componente para integrar en otras herramientas.</p>
+      </details>
+    </div>
+  </section>
 </main>
-<script>
-  const LABELS = { low_risk: "Riesgo bajo", suspicious: "Sospechoso", phishing: "Phishing" };
-  const result = document.getElementById("result");
 
-  function el(tag, className, text) {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;  // never innerHTML: URLs are untrusted input
-    return node;
-  }
-
-  function render(report) {
-    const card = el("div", "card");
-    const head = el("div", "head");
-    head.append(el("span", "verdict " + report.verdict, LABELS[report.verdict]),
-                el("span", "score", report.score + " / 100"));
-    const bar = el("div", "bar");
-    const fill = el("div", "fill-" + report.verdict);
-    fill.style.width = report.score + "%";
-    bar.append(fill);
-    card.append(head, bar, el("div", "domain", "Dominio registrado: " + report.registered_domain));
-
-    const list = el("ul");
-    if (report.findings.length === 0) list.append(el("li", "", "No se detectaron indicadores de phishing."));
-    for (const f of report.findings) {
-      const item = el("li");
-      const body = el("div");
-      body.append(el("div", "", f.message));
-      if (f.evidence) body.append(el("div", "ev", f.evidence));
-      item.append(el("span", "w", "+" + f.weight), body);
-      list.append(item);
-    }
-    card.append(list);
-    result.replaceChildren(card);
-  }
-
-  document.getElementById("form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const url = document.getElementById("url").value.trim();
-    if (!url) return;
-    try {
-      const response = await fetch("/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        const detail = typeof data.detail === "string" ? data.detail : "URL no válida";
-        result.replaceChildren(el("p", "error", detail));
-        return;
-      }
-      render(data);
-    } catch (err) {
-      result.replaceChildren(el("p", "error", "No se pudo contactar la API."));
-    }
-  });
-</script>
+<footer class="foot">
+  <p><strong>PhishGuard</strong> <span id="version"></span> · Código abierto, licencia MIT</p>
+  <p>Un score bajo no garantiza que un enlace sea seguro.</p>
+  <p><a href="/docs">Documentación de la API</a></p>
+</footer>
 </body>
 </html>

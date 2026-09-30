@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from phishguard import __version__
@@ -16,6 +17,7 @@ from phishguard.features import MAX_URL_LENGTH, InvalidURLError
 from phishguard.ml import model_info
 
 MAX_BATCH_SIZE = 100
+STATIC_DIR = resources.files("phishguard").joinpath("static")
 
 app = FastAPI(
     title="PhishGuard",
@@ -23,6 +25,7 @@ app = FastAPI(
     description="Detección de phishing explicable para URLs y correos. "
                 "El análisis es local: nunca se visitan las URLs.",
 )
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 UrlStr = Annotated[str, Field(min_length=1, max_length=MAX_URL_LENGTH)]
@@ -85,7 +88,7 @@ class EmailReportOut(BaseModel):
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def index() -> str:
-    return resources.files("phishguard").joinpath("static/index.html").read_text(encoding="utf-8")
+    return STATIC_DIR.joinpath("index.html").read_text(encoding="utf-8")
 
 
 @app.get("/health")

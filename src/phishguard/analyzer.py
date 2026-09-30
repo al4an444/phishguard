@@ -60,7 +60,7 @@ def analyze_url(url: str) -> Report:
                 findings.append(Finding("ml_model", weight,
                                         "El modelo de ML considera que el nombre del dominio se parece "
                                         "a dominios de phishing conocidos.",
-                                        f"probabilidad {probability:.0%}"))
+                                        f"probabilidad {probability:.1%}"))
                 findings.sort(key=lambda f: f.weight, reverse=True)
                 break
     score = min(100, sum(f.weight for f in findings))

@@ -59,6 +59,16 @@ def test_matching_link_text_is_not_deceptive():
     assert "deceptive_link" not in rules(report)
 
 
+def test_huge_anchor_text_is_handled_quickly():
+    import time
+
+    anchor = "a." * 50_000 + "!"
+    html = f'<a href="https://example.com/">{anchor}</a>'
+    started = time.perf_counter()
+    analyze_email(make_email("From: a@example.com\nSubject: x", html, "text/html"))
+    assert time.perf_counter() - started < 2
+
+
 def test_urgency_matches_whole_words():
     report = analyze_email(make_email("From: a@example.com\nSubject: Es urgente", "Hola"))
     urgency = next(f for f in report.findings if f.rule == "urgency_language")

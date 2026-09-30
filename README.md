@@ -16,12 +16,15 @@ Unicode, marcas en subdominios, SPF/DKIM/DMARC fallidos, enlaces engañosos…).
 - **Pensado para Latinoamérica:** detecta suplantación de bancos y servicios locales (BBVA, Santander,
   Banorte, Mercado Libre…) y palabras clave en español.
 
+![Interfaz web de PhishGuard analizando http://paypa1-login.xyz/verify/account: score 80, phishing](docs/screenshot.png)
+
 ```
 $ phishguard "http://paypa1-login.xyz/verify/account"
 http://paypa1-login.xyz/verify/account
-  Veredicto: PHISHING  (score 60/100)
+  Veredicto: PHISHING  (score 80/100)
   Dominio:   paypa1-login.xyz
    +30  combosquatting: El dominio combina la marca 'paypal' con otras palabras.  [paypa1-login.xyz]
+   +20  ml_model: El modelo de ML considera que el nombre del dominio se parece a dominios de phishing conocidos.  [probabilidad 99.6%]
    +15  suspicious_keywords: Contiene palabras típicas de páginas de robo de credenciales.  [account, login, verify]
    +10  suspicious_tld: El dominio de nivel superior se abusa con frecuencia en phishing.  [.xyz]
    +5   no_https: La conexión no está cifrada (HTTP).
@@ -57,7 +60,9 @@ Códigos de salida: `0` ok, `1` se alcanzó el umbral de `--fail-on`, `2` alguna
 uvicorn phishguard.api:app --reload
 ```
 
-- Interfaz web: <http://localhost:8000/>
+- Interfaz web: <http://localhost:8000/> — analiza URLs, lotes de hasta 100 URLs y correos `.eml`.
+  Los enlaces `/?url=<url codificada>` abren la página con el análisis ya hecho. La página no carga
+  nada de terceros (ni fuentes, ni scripts, ni analítica).
 - Documentación interactiva (Swagger): <http://localhost:8000/docs>
 
 | Método | Ruta              | Descripción                           |
@@ -98,7 +103,9 @@ for finding in report.findings:
 flowchart LR
     A[URL] --> B[parse_url<br/>normalización, IDN, PSL]
     B --> C[Reglas heurísticas]
+    B --> M[Modelo de ML<br/>dominio registrable]
     C --> D[Hallazgos con peso]
+    M -->|p ≥ 0.8| D
     D --> E[Score 0–100]
     E --> F{Veredicto}
     F -->|< 30| G[low_risk]
@@ -110,7 +117,8 @@ flowchart LR
    detecta IPs (incluidas formas ofuscadas como `3232235777` o `0xC0A80001`) y separa subdominio,
    dominio registrable y sufijo con la [Public Suffix List](https://publicsuffix.org/) (snapshot local).
 2. **Reglas** (`rules.py`): cada regla es una función independiente que devuelve hallazgos.
-3. **Score** (`analyzer.py`): suma de pesos, con un máximo de 100.
+3. **Modelo** (`ml.py`): puntúa el dominio registrable; solo aporta con alta confianza (ver [Modelo de ML](#modelo-de-ml)).
+4. **Score** (`analyzer.py`): suma de pesos, con un máximo de 100.
 
 ### Reglas
 
@@ -255,12 +263,14 @@ src/phishguard/
   email_analyzer.py  análisis de correos .eml
   cli.py        interfaz de línea de comandos
   api.py        API REST (FastAPI)
-  static/       interfaz web
+  static/       interfaz web (HTML + CSS + JS sin dependencias ni build)
 scripts/evaluate.py     métricas sobre un CSV etiquetado
 scripts/train_model.py  descarga de datos y entrenamiento
 data/emails/            correos de ejemplo
 tests/                  pytest
 ```
+
+¿Quieres contribuir? Lee [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licencia
 

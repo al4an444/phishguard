@@ -20,6 +20,18 @@ def test_index_serves_ui():
     assert "PhishGuard" in response.text
 
 
+def test_static_assets_are_served():
+    for asset in ("tokens.css", "styles.css", "app.js"):
+        assert client.get(f"/static/{asset}").status_code == 200
+
+
+def test_ui_never_injects_html():
+    # Analyzed URLs and e-mails are untrusted: the UI must only use textContent.
+    script = client.get("/static/app.js").text
+    assert "innerHTML" not in script
+    assert "insertAdjacentHTML" not in script
+
+
 def test_analyze_endpoint():
     response = client.post("/analyze", json={"url": "https://paypa1.com/login"})
     assert response.status_code == 200

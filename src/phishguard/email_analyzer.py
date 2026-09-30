@@ -282,7 +282,8 @@ def analyze_email(data: bytes | str) -> EmailReport:
         except InvalidURLError:
             continue
         links.append(LinkResult(url=url, text=anchor, report=report))
-        if anchor and _DOMAIN_LIKE_RE.match(anchor):
+        # A hostname is at most 253 chars; the cap also keeps the regex linear on hostile input.
+        if anchor and len(anchor) <= 253 + len("https://") and _DOMAIN_LIKE_RE.match(anchor):
             shown = _registered_domain(anchor)
             if shown and shown != report.registered_domain:
                 deceptive.append(f"muestra {shown}, lleva a {report.registered_domain}")
