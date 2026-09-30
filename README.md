@@ -275,3 +275,7 @@ tests/                  pytest
 ## Licencia
 
 [MIT](LICENSE)
+
+## Autor
+
+**Alan Ortega Álamo** · [al4an444.github.io](https://al4an444.github.io) · [GitHub](https://github.com/al4an444)
